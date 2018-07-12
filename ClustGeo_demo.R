@@ -7,6 +7,7 @@
 
 library(ClustGeo)
 library(janitor)
+library(ggplot2)
 library(tidyverse)
 
 
@@ -100,7 +101,7 @@ legend("topleft", legend=paste("cluster", 1:5), fill=1:5, bty="n",
        border="white")
 
 
-# 3 - EXAMPLE 2: a partition with neighborhood constrains -----------------
+# 4 - EXAMPLE 3: a partition with neighborhood constrains -----------------
 
 # Let us construct a different type of matrix D1 to take neighbouring 
 # municipalities into account when clustering the 303 municipalities.
@@ -137,3 +138,21 @@ sp::plot(estuary$map, border="grey", col=P5ter)
 legend("topleft", legend=paste("cluster", 1:5), fill=1:5, 
        bty="n", border="white")
 
+
+# 5 - CHARACTERISING CLUSTERS ---------------------------------------------
+
+estuary$dat %>% 
+  mutate(P5 = P5, 
+         P5bis = as.integer(P5bis), 
+         P5ter= as.integer(P5ter)) %>% 
+  gather(Partition, Cluster, P5:P5ter) %>% 
+  gather(Var, Value, employ_rate_city:agri_land) %>% 
+  mutate(Var = factor(Var, labels = c("employ_rate_city", "graduate_rate",
+                                      "housing_appart", "agri_land"))) %>%
+  ggplot(aes(x = Var, y = Value)) +
+  geom_boxplot(alpha = 0.8, color = "grey") +
+  coord_flip() + 
+  facet_grid( Cluster ~ Partition, 
+              scales = "free")
+
+              
