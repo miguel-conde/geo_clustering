@@ -97,8 +97,8 @@ cr$Qnorm
 tree <- hclustgeo(D0, D1, alpha=0.2)
 P10ter <- cutree(tree, K)
 sp::plot(areas_LL, border="grey", col = P10ter)
-legend("bottomright", legend=paste("cluster", 1:K), fill=1:K, 
-       bty="y", border="white", cex = .7)
+legend("left", legend=paste("cluster", 1:K), fill=1:K, 
+       bty="n", border="white", cex = .7)
 
 # BOXPLOT -----------------------------------------------------------------
 
