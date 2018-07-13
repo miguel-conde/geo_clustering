@@ -147,10 +147,10 @@ estuary$dat %>%
          P5ter= as.integer(P5ter)) %>% 
   gather(Partition, Cluster, P5:P5ter) %>% 
   gather(Var, Value, employ_rate_city:agri_land) %>% 
-  mutate(Var = factor(Var, labels = c("employ_rate_city", "graduate_rate",
+  mutate(Var = factor(Var, levels = c("employ_rate_city", "graduate_rate",
                                       "housing_appart", "agri_land"))) %>%
   ggplot(aes(x = Var, y = Value)) +
-  geom_boxplot(alpha = 0.8, color = "grey") +
+  geom_boxplot(alpha = 0.8, color = "blue") +
   coord_flip() + 
   facet_grid( Cluster ~ Partition, 
               scales = "free")
