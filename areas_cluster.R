@@ -1,3 +1,4 @@
+rm(list = ls())
 # LIBRARIES and SOURCES ---------------------------------------------------
 
 library(ClustGeo)
@@ -25,6 +26,11 @@ plot(areas_LL)
 class(areas_LL)
 names(areas_LL)
 
+areas_LL_centers <- SpatialPointsDataFrame(rgeos::gCentroid(areas_LL, 
+                                                            byid=TRUE), 
+                                           areas_LL@data, match.ID=FALSE)
+areas_dists <- spDists(areas_LL_centers)
+
 
 # LOAD DATA ---------------------------------------------------------------
 
@@ -35,7 +41,7 @@ load("data/final_dataset.Rds")
 load("data/train_set.Rds")
 
 
-# SOCIO-ECONOMIC CLUSTERING -----------------------------------------------
+# 1 - SOCIO-ECONOMIC CLUSTERING -------------------------------------------
 
 K <- 6
 
@@ -48,35 +54,62 @@ se_data <- final_dataset %>%
   # select(tipo_zona, edad_media, 
   #        prop_poblacion_activa, nivel_socioeconomico)
   select(tipo_zona, densidad_pob_km2, edad_media, nivel_socioeconomico) %>% 
-  mutate(tipo_zona = scale(tipo_zona),
-         densidad_pob_km2 = scale(densidad_pob_km2),
-         edad_media = scale(edad_media))
+  mutate(tipo_zona = scales::rescale(tipo_zona),
+         densidad_pob_km2 = scales::rescale(densidad_pob_km2),
+         edad_media = scales::rescale(edad_media),
+         nivel_socioeconomico = scales::rescale(nivel_socioeconomico))
 
 se_data %>% glimpse
 
-D0 <- dist(se_data) 
+D0_se <- dist(se_data) 
 
-tree <- hclustgeo(D0)
+tree <- hclustgeo(D0_se)
 plot(tree, hang=-1, label = FALSE, xlab = "", sub = "", main= "")
 rect.hclust(tree, k = K, border = c(4, 5, 3, 2, 1))
 legend("topright", legend = paste("cluster", 1:K), fill = 1:K, 
        bty = "n", border = "white")
 
-P10 <- cutree(tree, K) 
+P_K_se <- cutree(tree, K) 
 # plot an object of class sp
-sp::plot(areas_LL, border="grey", col = P10) 
-legend("topleft", legend=paste("cluster", 1:K), fill = 1:K, bty = "n", 
-       border="white")
+sp::plot(areas_LL, border="grey", col = P_K_se,
+         main = "Socio - Economical clustering") 
+legend("left", legend=paste("cluster", 1:K), fill = 1:K, bty = "n", 
+       border="white", cex = .7)
 
 # list of the areas in cluster 5
 area_label <- as.vector(areas_LL$DSNOMBRE)
-area_label[which(P10 == 5)]
+area_label[which(P_K_se == 5)]
 
 area_desc <- as.vector(areas_LL$DSAREAGEO)
-area_desc[which(P10 == 5)]
+area_desc[which(P_K_se == 5)]
 
 
-# ADDING GEO CONSTRAINS ---------------------------------------------------
+
+# 1.1 - ADDING GEO CONSTRAINS ---------------------------------------------
+
+
+# 1.1.1 - DISTANCE CONSTRAINS ---------------------------------------------
+
+# the geographic distances between the areas
+D1_dist <- as.dist(areas_dists) 
+
+## Choicing the mixing parameter
+
+cr <- choicealpha(D0_se, D1_dist, 
+                  range.alpha=seq(0, 1, 0.1), K = K, graph=TRUE)
+# proportion of explained pseudo-inertia
+cr$Q 
+# normalized proportion of explained pseudo-inertias
+cr$Qnorm 
+
+tree <- hclustgeo(D0_se, D1_dist, alpha=0.5)
+P_K_se_dist <- cutree(tree, K)
+sp::plot(areas_LL, border="grey", col = P_K_se_dist,
+         main = "Socio - Economical + Distance Clustering")
+legend("left", legend=paste("cluster", 1:K), fill=1:K, 
+       bty="n", border="white", cex = .7)
+
+# 1.1.2 - NEIGHBORHOOD CONSTRAINS -----------------------------------------
 
 # list of neighbors
 list.nb <- spdep::poly2nb(areas_LL,
@@ -96,31 +129,33 @@ areas_LL$DSAREAGEO[tgt]
 A <- spdep::nb2mat(list.nb, style="B", zero.policy = TRUE) 
 diag(A) <- 1
 colnames(A) <- rownames(A) <- area_label
-D1 <- 1-A
-D1[1:2, 1:5]
-D1 <- as.dist(D1)
+D1_neigh <- 1-A
+D1_neigh[1:2, 1:5]
+D1_neigh <- as.dist(D1_neigh)
 
 ## Choicing the mixing parameter
 
-cr <- choicealpha(D0, D1, range.alpha=seq(0, 1, 0.1), K = K, graph=TRUE)
+cr <- choicealpha(D0_se, D1_neigh, 
+                  range.alpha=seq(0, 1, 0.1), K = K, graph=TRUE)
 # proportion of explained pseudo-inertia
 cr$Q 
 # normalized proportion of explained pseudo-inertias
 cr$Qnorm 
 
-tree <- hclustgeo(D0, D1, alpha=0.2)
-P10ter <- cutree(tree, K)
-sp::plot(areas_LL, border="grey", col = P10ter)
+tree <- hclustgeo(D0_se, D1_neigh, alpha=0.3)
+P_K_se_neigh <- cutree(tree, K)
+sp::plot(areas_LL, border="grey", col = P_K_se_neigh,
+         main = "Socio - Economical + Neighborhood Clustering")
 legend("left", legend=paste("cluster", 1:K), fill=1:K, 
        bty="n", border="white", cex = .7)
 
-# BOXPLOT -----------------------------------------------------------------
-
+# 1.2 - BOXPLOT -----------------------------------------------------------
 
 se_data %>% 
-  mutate(P10 = P10, 
-         P10ter= as.integer(P10ter)) %>% 
-  gather(Partition, Cluster, P10:P10ter) %>% 
+  mutate(P_K_se = P_K_se, 
+         P_K_se_dist= P_K_se_dist,
+         P_K_se_neigh = P_K_se_neigh) %>% 
+  gather(Partition, Cluster, P_K_se:P_K_se_neigh) %>% 
   gather(Var, Value, tipo_zona:nivel_socioeconomico) %>% 
   # mutate(Var = factor(Var, levels = c("employ_rate_city", "graduate_rate",
   #                                     "housing_appart", "agri_land"))) %>%
@@ -131,9 +166,9 @@ se_data %>%
               scales = "free")
 
 
-# MARKET CLUSTERING -------------------------------------------------------
+# 2 - MARKET CLUSTERING ---------------------------------------------------
 
-# the socio-economic distances
+# the potencial market distances
 pot_data <- final_dataset %>% 
   select(Potencial, Ind_Eficacia_Comercial) %>% 
   mutate(Potencial = scale(Potencial),
@@ -141,26 +176,67 @@ pot_data <- final_dataset %>%
 
 pot_data %>% glimpse
 
-D0 <- dist(pot_data) 
+D0_pot <- dist(pot_data) 
+
+tree <- hclustgeo(D0_pot)
+P_K_pot <- cutree(tree, K) 
+# plot an object of class sp
+sp::plot(areas_LL, border="grey", col = P_K_pot,
+         main = "Potential Market clustering") 
+legend("left", legend=paste("cluster", 1:K), fill = 1:K, bty = "n", 
+       border="white", cex = .7)
+
+
+# 2.1 - ADDING GEO CONSTRAINS ---------------------------------------------
+
+
+
+# 2.1.1 - DISTANCES -------------------------------------------------------
 
 ## Choicing the mixing parameter
 
-cr <- choicealpha(D0, D1, range.alpha=seq(0, 1, 0.1), K = K, graph=TRUE)
+cr <- choicealpha(D0_pot, D1_dist, 
+                  range.alpha=seq(0, 1, 0.1), K = K, graph=TRUE)
 # proportion of explained pseudo-inertia
 cr$Q 
 # normalized proportion of explained pseudo-inertias
 cr$Qnorm 
 
-tree <- hclustgeo(D0, D1, alpha=0.2)
-P10terPot <- cutree(tree, K)
-sp::plot(areas_LL, border="grey", col = P10terPot)
+tree <- hclustgeo(D0_pot, D1_neigh, alpha=0.5)
+P_K_pot_dist <- cutree(tree, K)
+sp::plot(areas_LL, border="grey", col = P_K_pot_dist,
+         main = "Potential Market + Distances Clustering")
 legend("left", legend=paste("cluster", 1:K), fill=1:K, 
        bty="n", border="white", cex = .7)
 
+
+# 2.1.2 - NEIGHBORHOOD ----------------------------------------------------
+
+## Choicing the mixing parameter
+
+cr <- choicealpha(D0_pot, D1_neigh, 
+                  range.alpha=seq(0, 1, 0.1), K = K, graph=TRUE)
+# proportion of explained pseudo-inertia
+cr$Q 
+# normalized proportion of explained pseudo-inertias
+cr$Qnorm 
+
+tree <- hclustgeo(D0_pot, D1_neigh, alpha=0.2)
+P_K_pot_neigh <- cutree(tree, K)
+sp::plot(areas_LL, border="grey", col = P_K_pot_neigh,
+         main = "Potential Market + Neighborhood Clustering")
+legend("left", legend=paste("cluster", 1:K), fill=1:K, 
+       bty="n", border="white", cex = .7)
+
+
+# 2.2 - BOXPLOT -----------------------------------------------------------
+
+
 pot_data %>% 
-  mutate(P10ter= as.integer(P10ter),
-         P10terPot= as.integer(P10terPot)) %>% 
-  gather(Partition, Cluster, P10terPot) %>% 
+  mutate(P_K_pot= as.integer(P_K_pot),
+         P_K_pot_dist= as.integer(P_K_pot_dist),
+         P_K_pot_neigh= as.integer(P_K_pot_neigh)) %>% 
+  gather(Partition, Cluster, P_K_pot:P_K_pot_neigh) %>% 
   gather(Var, Value, Potencial:Ind_Eficacia_Comercial) %>% 
   ggplot(aes(x = Var, y = Value)) +
   geom_boxplot(alpha = 0.8, color = "blue") +
