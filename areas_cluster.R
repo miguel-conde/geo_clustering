@@ -8,7 +8,9 @@ library(tidyverse)
 
 
 # CONSTANTS ---------------------------------------------------------------
-
+imgs_dir <- "img"
+BMP_WIDTH <- 800
+BMP_HEIGHT <- 800
 
 # READ GEO DATA AND PLOT MAP ----------------------------------------------
 
@@ -76,6 +78,10 @@ sp::plot(areas_LL, border="grey", col = P_K_se,
 legend("left", legend=paste("cluster", 1:K), fill = 1:K, bty = "n", 
        border="white", cex = .7)
 
+dev.copy(png, file = file.path(imgs_dir, "P_K_se.png"),
+         width = BMP_WIDTH, height = BMP_HEIGHT)
+dev.off() 
+
 # list of the areas in cluster 5
 area_label <- as.vector(areas_LL$DSNOMBRE)
 area_label[which(P_K_se == 5)]
@@ -108,6 +114,10 @@ sp::plot(areas_LL, border="grey", col = P_K_se_dist,
          main = "Socio - Economical + Distance Clustering")
 legend("left", legend=paste("cluster", 1:K), fill=1:K, 
        bty="n", border="white", cex = .7)
+
+dev.copy(png, file = file.path(imgs_dir, "P_K_se_dist.png"),
+         width = BMP_WIDTH, height = BMP_HEIGHT)
+dev.off() 
 
 # 1.1.2 - NEIGHBORHOOD CONSTRAINS -----------------------------------------
 
@@ -149,6 +159,10 @@ sp::plot(areas_LL, border="grey", col = P_K_se_neigh,
 legend("left", legend=paste("cluster", 1:K), fill=1:K, 
        bty="n", border="white", cex = .7)
 
+dev.copy(png, file = file.path(imgs_dir, "P_K_se_neigh.png"),
+         width = BMP_WIDTH, height = BMP_HEIGHT)
+dev.off() 
+
 # 1.2 - BOXPLOT -----------------------------------------------------------
 
 se_data %>% 
@@ -164,6 +178,10 @@ se_data %>%
   coord_flip() + 
   facet_grid( Cluster ~ Partition, 
               scales = "free")
+
+dev.copy(png, file = file.path(imgs_dir, "boxplot_se.png"),
+         width = BMP_WIDTH, height = BMP_HEIGHT)
+dev.off() 
 
 
 # 2 - MARKET CLUSTERING ---------------------------------------------------
@@ -185,6 +203,10 @@ sp::plot(areas_LL, border="grey", col = P_K_pot,
          main = "Potential Market clustering") 
 legend("left", legend=paste("cluster", 1:K), fill = 1:K, bty = "n", 
        border="white", cex = .7)
+
+dev.copy(png, file = file.path(imgs_dir, "P_K_pot.png"),
+         width = BMP_WIDTH, height = BMP_HEIGHT)
+dev.off() 
 
 
 # 2.1 - ADDING GEO CONSTRAINS ---------------------------------------------
@@ -209,6 +231,10 @@ sp::plot(areas_LL, border="grey", col = P_K_pot_dist,
 legend("left", legend=paste("cluster", 1:K), fill=1:K, 
        bty="n", border="white", cex = .7)
 
+dev.copy(png, file = file.path(imgs_dir, "P_K_pot_dist.png"),
+         width = BMP_WIDTH, height = BMP_HEIGHT)
+dev.off() 
+
 
 # 2.1.2 - NEIGHBORHOOD ----------------------------------------------------
 
@@ -228,6 +254,10 @@ sp::plot(areas_LL, border="grey", col = P_K_pot_neigh,
 legend("left", legend=paste("cluster", 1:K), fill=1:K, 
        bty="n", border="white", cex = .7)
 
+dev.copy(png, file = file.path(imgs_dir, "P_K_pot_neigh.png"),
+         width = BMP_WIDTH, height = BMP_HEIGHT)
+dev.off() 
+
 
 # 2.2 - BOXPLOT -----------------------------------------------------------
 
@@ -243,3 +273,7 @@ pot_data %>%
   coord_flip() + 
   facet_grid( Cluster ~ Partition, 
               scales = "free")
+
+dev.copy(png, file = file.path(imgs_dir, "boxplot_pot.png"),
+         width = BMP_WIDTH, height = BMP_HEIGHT)
+dev.off() 
