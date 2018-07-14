@@ -1,4 +1,15 @@
+# LIBRARIES and SOURCES ---------------------------------------------------
+
+library(ClustGeo)
 pacman::p_load(rgdal)
+library(ggplot2)
+library(tidyverse)
+
+
+# CONSTANTS ---------------------------------------------------------------
+
+
+# READ GEO DATA AND PLOT MAP ----------------------------------------------
 
 ogrDrivers()
 
@@ -13,6 +24,9 @@ plot(areas_LL)
 
 class(areas_LL)
 names(areas_LL)
+
+
+# LOAD DATA ---------------------------------------------------------------
 
 # final_dataset
 load("data/final_dataset.Rds")
@@ -110,6 +124,44 @@ se_data %>%
   gather(Var, Value, tipo_zona:nivel_socioeconomico) %>% 
   # mutate(Var = factor(Var, levels = c("employ_rate_city", "graduate_rate",
   #                                     "housing_appart", "agri_land"))) %>%
+  ggplot(aes(x = Var, y = Value)) +
+  geom_boxplot(alpha = 0.8, color = "blue") +
+  coord_flip() + 
+  facet_grid( Cluster ~ Partition, 
+              scales = "free")
+
+
+# MARKET CLUSTERING -------------------------------------------------------
+
+# the socio-economic distances
+pot_data <- final_dataset %>% 
+  select(Potencial, Ind_Eficacia_Comercial) %>% 
+  mutate(Potencial = scale(Potencial),
+         Ind_Eficacia_Comercial = scale(Ind_Eficacia_Comercial))
+
+pot_data %>% glimpse
+
+D0 <- dist(pot_data) 
+
+## Choicing the mixing parameter
+
+cr <- choicealpha(D0, D1, range.alpha=seq(0, 1, 0.1), K = K, graph=TRUE)
+# proportion of explained pseudo-inertia
+cr$Q 
+# normalized proportion of explained pseudo-inertias
+cr$Qnorm 
+
+tree <- hclustgeo(D0, D1, alpha=0.2)
+P10terPot <- cutree(tree, K)
+sp::plot(areas_LL, border="grey", col = P10terPot)
+legend("left", legend=paste("cluster", 1:K), fill=1:K, 
+       bty="n", border="white", cex = .7)
+
+pot_data %>% 
+  mutate(P10ter= as.integer(P10ter),
+         P10terPot= as.integer(P10terPot)) %>% 
+  gather(Partition, Cluster, P10ter) %>% 
+  gather(Var, Value, Potencial:Ind_Eficacia_Comercial) %>% 
   ggplot(aes(x = Var, y = Value)) +
   geom_boxplot(alpha = 0.8, color = "blue") +
   coord_flip() + 
