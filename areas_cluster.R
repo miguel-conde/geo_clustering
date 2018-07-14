@@ -160,7 +160,7 @@ legend("left", legend=paste("cluster", 1:K), fill=1:K,
 pot_data %>% 
   mutate(P10ter= as.integer(P10ter),
          P10terPot= as.integer(P10terPot)) %>% 
-  gather(Partition, Cluster, P10ter) %>% 
+  gather(Partition, Cluster, P10terPot) %>% 
   gather(Var, Value, Potencial:Ind_Eficacia_Comercial) %>% 
   ggplot(aes(x = Var, y = Value)) +
   geom_boxplot(alpha = 0.8, color = "blue") +
