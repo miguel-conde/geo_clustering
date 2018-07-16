@@ -14,24 +14,23 @@ BMP_HEIGHT <- 800
 
 # READ GEO DATA AND PLOT MAP ----------------------------------------------
 
+# 1st, some playing around
 ogrDrivers()
 
 dsn_dir <- "./data/areas"
 ogrListLayers(dsn_dir)
 ogrInfo(dsn_dir)
-ogrInfo(dsn=dsn_dir, layer="Area_geografica")
+ogrInfo(dsn = dsn_dir, layer = "Area_geografica")
 
+# Read geo data
 areas_LL <- readOGR(dsn  = dsn_dir, layer = "Area_geografica")
 
+# Plot 1st map
 plot(areas_LL)
 
+# Explore the returned object
 class(areas_LL)
 names(areas_LL)
-
-areas_LL_centers <- SpatialPointsDataFrame(rgeos::gCentroid(areas_LL, 
-                                                            byid=TRUE), 
-                                           areas_LL@data, match.ID=FALSE)
-areas_dists <- spDists(areas_LL_centers)
 
 
 # LOAD DATA ---------------------------------------------------------------
@@ -45,6 +44,7 @@ load("data/train_set.Rds")
 
 # 1 - SOCIO-ECONOMIC CLUSTERING -------------------------------------------
 
+# Number of clusters
 K <- 6
 
 # the socio-economic distances
@@ -66,17 +66,17 @@ se_data %>% glimpse
 D0_se <- dist(se_data) 
 
 tree <- hclustgeo(D0_se)
-plot(tree, hang=-1, label = FALSE, xlab = "", sub = "", main= "")
+plot(tree, hang = -1, label = FALSE, xlab = "", sub = "", main = "")
 rect.hclust(tree, k = K, border = c(4, 5, 3, 2, 1))
 legend("topright", legend = paste("cluster", 1:K), fill = 1:K, 
        bty = "n", border = "white")
 
 P_K_se <- cutree(tree, K) 
 # plot an object of class sp
-sp::plot(areas_LL, border="grey", col = P_K_se,
+sp::plot(areas_LL, border = "grey", col = P_K_se,
          main = "Socio - Economical clustering") 
-legend("left", legend=paste("cluster", 1:K), fill = 1:K, bty = "n", 
-       border="white", cex = .7)
+legend("left", legend = paste("cluster", 1:K), fill = 1:K, bty = "n", 
+       border = "white", cex = .7)
 
 dev.copy(png, file = file.path(imgs_dir, "P_K_se.png"),
          width = BMP_WIDTH, height = BMP_HEIGHT)
@@ -96,13 +96,19 @@ area_desc[which(P_K_se == 5)]
 
 # 1.1.1 - DISTANCE CONSTRAINS ---------------------------------------------
 
+# Calc distances between areas centroids
+areas_LL_centers <- SpatialPointsDataFrame(rgeos::gCentroid(areas_LL, 
+                                                            byid = TRUE), 
+                                           areas_LL@data, match.ID = FALSE)
+areas_dists <- spDists(areas_LL_centers)
+
 # the geographic distances between the areas
 D1_dist <- as.dist(areas_dists) 
 
 ## Choicing the mixing parameter
 
 cr <- choicealpha(D0_se, D1_dist, 
-                  range.alpha=seq(0, 1, 0.1), K = K, graph=TRUE)
+                  range.alpha = seq(0, 1, 0.1), K = K, graph = TRUE)
 # proportion of explained pseudo-inertia
 cr$Q 
 # normalized proportion of explained pseudo-inertias
@@ -110,10 +116,10 @@ cr$Qnorm
 
 tree <- hclustgeo(D0_se, D1_dist, alpha=0.5)
 P_K_se_dist <- cutree(tree, K)
-sp::plot(areas_LL, border="grey", col = P_K_se_dist,
+sp::plot(areas_LL, border = "grey", col = P_K_se_dist,
          main = "Socio - Economical + Distance Clustering")
-legend("left", legend=paste("cluster", 1:K), fill=1:K, 
-       bty="n", border="white", cex = .7)
+legend("left", legend=paste("cluster", 1:K), fill = 1:K, 
+       bty = "n", border = "white", cex = .7)
 
 dev.copy(png, file = file.path(imgs_dir, "P_K_se_dist.png"),
          width = BMP_WIDTH, height = BMP_HEIGHT)
@@ -123,7 +129,7 @@ dev.off()
 
 # list of neighbors
 list.nb <- spdep::poly2nb(areas_LL,
-                          row.names=areas_LL$DSNOMBRE) 
+                          row.names = areas_LL$DSNOMBRE) 
 # list of the neighbors of DISTRITO CENTRO DE MADRID (CASCO HISTÃ“RICO)
 tgt <- sapply(areas_LL$DSAREAGEO, 
               function(x) {grepl("DISTRITO CENTRO DE MADRID", x)})
@@ -136,7 +142,7 @@ areas_LL$DSAREAGEO[tgt]
 # The dissimilarity matrix D1 is constructed based on the adjacency matrix A 
 # with D1 =  1_nn − A.
 # build the adjacency matrix
-A <- spdep::nb2mat(list.nb, style="B", zero.policy = TRUE) 
+A <- spdep::nb2mat(list.nb, style = "B", zero.policy = TRUE) 
 diag(A) <- 1
 colnames(A) <- rownames(A) <- area_label
 D1_neigh <- 1-A
@@ -146,18 +152,18 @@ D1_neigh <- as.dist(D1_neigh)
 ## Choicing the mixing parameter
 
 cr <- choicealpha(D0_se, D1_neigh, 
-                  range.alpha=seq(0, 1, 0.1), K = K, graph=TRUE)
+                  range.alpha = seq(0, 1, 0.1), K = K, graph = TRUE)
 # proportion of explained pseudo-inertia
 cr$Q 
 # normalized proportion of explained pseudo-inertias
 cr$Qnorm 
 
-tree <- hclustgeo(D0_se, D1_neigh, alpha=0.3)
+tree <- hclustgeo(D0_se, D1_neigh, alpha = 0.3)
 P_K_se_neigh <- cutree(tree, K)
-sp::plot(areas_LL, border="grey", col = P_K_se_neigh,
+sp::plot(areas_LL, border = "grey", col = P_K_se_neigh,
          main = "Socio - Economical + Neighborhood Clustering")
-legend("left", legend=paste("cluster", 1:K), fill=1:K, 
-       bty="n", border="white", cex = .7)
+legend("left", legend=paste("cluster", 1:K), fill = 1:K, 
+       bty = "n", border = "white", cex = .7)
 
 dev.copy(png, file = file.path(imgs_dir, "P_K_se_neigh.png"),
          width = BMP_WIDTH, height = BMP_HEIGHT)
@@ -199,10 +205,10 @@ D0_pot <- dist(pot_data)
 tree <- hclustgeo(D0_pot)
 P_K_pot <- cutree(tree, K) 
 # plot an object of class sp
-sp::plot(areas_LL, border="grey", col = P_K_pot,
+sp::plot(areas_LL, border = "grey", col = P_K_pot,
          main = "Potential Market clustering") 
 legend("left", legend=paste("cluster", 1:K), fill = 1:K, bty = "n", 
-       border="white", cex = .7)
+       border = "white", cex = .7)
 
 dev.copy(png, file = file.path(imgs_dir, "P_K_pot.png"),
          width = BMP_WIDTH, height = BMP_HEIGHT)
@@ -218,18 +224,18 @@ dev.off()
 ## Choicing the mixing parameter
 
 cr <- choicealpha(D0_pot, D1_dist, 
-                  range.alpha=seq(0, 1, 0.1), K = K, graph=TRUE)
+                  range.alpha = seq(0, 1, 0.1), K = K, graph = TRUE)
 # proportion of explained pseudo-inertia
 cr$Q 
 # normalized proportion of explained pseudo-inertias
 cr$Qnorm 
 
-tree <- hclustgeo(D0_pot, D1_neigh, alpha=0.5)
+tree <- hclustgeo(D0_pot, D1_neigh, alpha = 0.5)
 P_K_pot_dist <- cutree(tree, K)
 sp::plot(areas_LL, border="grey", col = P_K_pot_dist,
          main = "Potential Market + Distances Clustering")
-legend("left", legend=paste("cluster", 1:K), fill=1:K, 
-       bty="n", border="white", cex = .7)
+legend("left", legend = paste("cluster", 1:K), fill = 1:K, 
+       bty = "n", border = "white", cex = .7)
 
 dev.copy(png, file = file.path(imgs_dir, "P_K_pot_dist.png"),
          width = BMP_WIDTH, height = BMP_HEIGHT)
@@ -241,18 +247,18 @@ dev.off()
 ## Choicing the mixing parameter
 
 cr <- choicealpha(D0_pot, D1_neigh, 
-                  range.alpha=seq(0, 1, 0.1), K = K, graph=TRUE)
+                  range.alpha = seq(0, 1, 0.1), K = K, graph = TRUE)
 # proportion of explained pseudo-inertia
 cr$Q 
 # normalized proportion of explained pseudo-inertias
 cr$Qnorm 
 
-tree <- hclustgeo(D0_pot, D1_neigh, alpha=0.2)
+tree <- hclustgeo(D0_pot, D1_neigh, alpha = 0.2)
 P_K_pot_neigh <- cutree(tree, K)
-sp::plot(areas_LL, border="grey", col = P_K_pot_neigh,
+sp::plot(areas_LL, border = "grey", col = P_K_pot_neigh,
          main = "Potential Market + Neighborhood Clustering")
-legend("left", legend=paste("cluster", 1:K), fill=1:K, 
-       bty="n", border="white", cex = .7)
+legend("left", legend = paste("cluster", 1:K), fill = 1:K, 
+       bty = "n", border = "white", cex = .7)
 
 dev.copy(png, file = file.path(imgs_dir, "P_K_pot_neigh.png"),
          width = BMP_WIDTH, height = BMP_HEIGHT)
@@ -277,3 +283,51 @@ pot_data %>%
 dev.copy(png, file = file.path(imgs_dir, "boxplot_pot.png"),
          width = BMP_WIDTH, height = BMP_HEIGHT)
 dev.off() 
+
+
+# 3 - SEARCHING K ---------------------------------------------------------
+
+# 3.1 - fviz_nbclust() ----------------------------------------------------
+
+library(factoextra)
+
+## ELBOW Method
+
+# Socioeconomic
+fviz_nbclust(se_data, kmeans, method = "wss") +
+  geom_vline(xintercept = 4, linetype = 2)+
+  labs(subtitle = "Elbow method")
+# Potential
+fviz_nbclust(pot_data, kmeans, method = "wss") +
+  geom_vline(xintercept = 4, linetype = 2)+
+  labs(subtitle = "Elbow method")
+# Distances
+fviz_nbclust(areas_dists, kmeans, method = "wss") +
+  geom_vline(xintercept = 4, linetype = 2)+
+  labs(subtitle = "Elbow method")
+# Neighborhood
+fviz_nbclust(1-A, kmeans, method = "wss") +
+  geom_vline(xintercept = 4, linetype = 2)+
+  labs(subtitle = "Elbow method")
+
+# 3.2 - NbClust() ---------------------------------------------------------
+
+library(NbClust)
+
+# Socioeconomic
+nb <- NbClust(se_data, distance = "euclidean", min.nc = 2,
+              max.nc = 20, method = "ward.D")
+fviz_nbclust(nb)
+# Potential
+nb <- NbClust(pot_data, distance = "euclidean", min.nc = 2,
+              max.nc = 20, method = "ward.D")
+fviz_nbclust(nb)
+# Distances
+nb <- NbClust(areas_dists, distance = "euclidean", min.nc = 2,
+              max.nc = 20, method = "ward.D")
+fviz_nbclust(nb)
+# Neighborhood
+nb <- NbClust(1-A, distance = "euclidean", min.nc = 2,
+              max.nc = 20, method = "ward.D")
+fviz_nbclust(nb)
+
