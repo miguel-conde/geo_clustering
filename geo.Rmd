@@ -1,0 +1,235 @@
+---
+title: Geo Clustering
+author: Conento Decision Science
+date: 2018-07-17
+output: 
+  revealjs::revealjs_presentation:
+    self_contained: false
+    reveal_plugins: ["zoom"]
+    theme: sky
+    highlight: pygments
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = FALSE, message=FALSE, warning=FALSE, fig.align='center')
+knitr::opts_knit$set(root.dir = './')
+```
+
+
+```{r}
+# LIBRARIES and SOURCES ---------------------------------------------------
+
+library(ClustGeo)
+library(rgdal)
+library(ggplot2)
+library(tidyverse)
+```
+
+```{r}
+# final_dataset
+load("data/final_dataset.Rds")
+```
+
+
+
+# Secciones Censales
+
+## Los números
+
+## Ejemplo: CAM
+```{r}
+dsn_dir <- "./data/SSCC"
+
+# Read SSCC geo data
+sscc_LL <- readOGR(dsn  = dsn_dir, 
+                   layer = "SECC_CPV_E_20111101_01_R_INE",
+                   verbose = FALSE)
+
+## Only CAM
+ss_cc_CAM <- sscc_LL[sscc_LL$NCA == "Comunidad de Madrid",]
+
+# Plot sscc in CAM
+plot(ss_cc_CAM)
+```
+
+```{r}
+library(readxl)
+SSCC_ONCE <- read_excel("data/SSCC_ONCE.xlsx", 
+                        sheet = "Relacion-SSCC-Provincia-AreaGeo")
+```
+
+## CE221
+```{r}
+# CE221 ES123 NE522 NO411 SE312 SO312
+
+plot_ss_area <- function(cod_area) {
+  sscc_sel_area <- SSCC_ONCE %>% 
+  filter(area_geografica == cod_area) %>% 
+  pull(seccode_2014)
+
+sscc_sel_area <- sscc_LL[sscc_LL$CUSEC %in% sscc_sel_area,]
+
+# BASE SYSTEM
+plot(sscc_sel_area, col = sscc_sel_area$CUSEC,
+     main = paste0("Secciones Censales del Área ",
+                   cod_area, "\n",
+                   final_dataset %>% 
+                        filter(area_geografica == cod_area) %>% 
+                        pull(descripcion_resumida)))
+
+}
+
+plot_ss_area("CE221")
+
+```
+
+
+## ES123
+
+```{r}
+plot_ss_area("ES123")
+```
+
+## NE522
+```{r}
+plot_ss_area("NE522")
+```
+
+## NO411 
+```{r}
+plot_ss_area("NO411")
+```
+
+## SE312 
+```{r}
+plot_ss_area("SE312")
+```
+
+## SO312
+```{r}
+plot_ss_area("SO312")
+```
+
+
+# Geo - clustering
+
+## Oportunidades y Problemas
+
+- Pensemos en las Áreas Geográficas como si fueran SSCC
+- Podemos agruparlas *simultáneamente*:
+    - Por similitud cualitativa (por ejemplo, socio-económica)
+    - Y proximidad o contigüidad
+- Haremos ejemplos con 6 clusters
+
+Pero **¿ES DEL TODO AUTOMÁTICO?**
+
+## El (conocido) mapa
+```{r}
+dsn_dir <- "./data/areas"
+
+# Read geo data
+areas_LL <- readOGR(dsn  = dsn_dir, 
+                    layer = "Area_geografica",
+                    verbose = FALSE)
+
+# Plot 1st map
+plot(areas_LL)
+```
+
+## Solo Socio-económico 
+```{r}
+# Number of clusters
+K <- 6
+
+## the socio-economic distances
+se_data <- final_dataset %>% 
+  select(tipo_zona:ratio_pdv_lae) %>% 
+  select(tipo_zona, densidad_pob_km2, edad_media, nivel_socioeconomico) %>% 
+  mutate(tipo_zona = scales::rescale(tipo_zona),
+         densidad_pob_km2 = scales::rescale(densidad_pob_km2),
+         edad_media = scales::rescale(edad_media),
+         nivel_socioeconomico = scales::rescale(nivel_socioeconomico))
+
+D0_se <- dist(se_data) 
+
+## the geographic distances between the areas
+
+# Calc distances between areas centroids
+areas_LL_centers <- SpatialPointsDataFrame(rgeos::gCentroid(areas_LL, 
+                                                            byid = TRUE), 
+                                           areas_LL@data, match.ID = FALSE)
+areas_dists <- spDists(areas_LL_centers)
+
+D1_dist <- as.dist(areas_dists) 
+
+## neighborhood diastances
+
+# list of neighbors
+list.nb <- spdep::poly2nb(areas_LL,
+                          row.names = areas_LL$DSNOMBRE) 
+
+# The dissimilarity matrix D1 is constructed based on the adjacency matrix A 
+# with D1 =  1_nn − A.
+# build the adjacency matrix
+area_label <- as.vector(areas_LL$DSNOMBRE)
+A <- spdep::nb2mat(list.nb, style = "B", zero.policy = TRUE) 
+diag(A) <- 1
+colnames(A) <- rownames(A) <- area_label
+D1_neigh <- 1-A
+D1_neigh <- as.dist(D1_neigh)
+```
+
+```{r}
+tree <- hclustgeo(D0_se)
+
+P_K_se <- cutree(tree, K) 
+# plot an object of class sp
+sp::plot(areas_LL, border = "grey", col = P_K_se,
+         main = "Socio - Economical clustering") 
+legend("left", legend = paste("cluster", 1:K), fill = 1:K, bty = "n", 
+       border = "white", cex = .7)
+
+
+```
+
+## Socio-económico y Distancias
+
+```{r}
+tree <- hclustgeo(D0_se, D1_dist, alpha=0.5)
+P_K_se_dist <- cutree(tree, K)
+sp::plot(areas_LL, border = "grey", col = P_K_se_dist,
+         main = "Socio - Economical + Distance Clustering")
+legend("left", legend=paste("cluster", 1:K), fill = 1:K, 
+       bty = "n", border = "white", cex = .7)
+```
+
+## Socio-económico y contigüidad
+```{r}
+tree <- hclustgeo(D0_se, D1_neigh, alpha = 0.3)
+P_K_se_neigh <- cutree(tree, K)
+sp::plot(areas_LL, border = "grey", col = P_K_se_neigh,
+         main = "Socio - Economical + Neighborhood Clustering")
+legend("left", legend=paste("cluster", 1:K), fill = 1:K, 
+       bty = "n", border = "white", cex = .7)
+```
+
+## Comparando clusters
+```{r}
+se_data %>% 
+  mutate(P_K_se = P_K_se, 
+         P_K_se_dist= P_K_se_dist,
+         P_K_se_neigh = P_K_se_neigh) %>% 
+  gather(Partition, Cluster, P_K_se:P_K_se_neigh) %>% 
+  gather(Var, Value, tipo_zona:nivel_socioeconomico) %>% 
+  # mutate(Var = factor(Var, levels = c("employ_rate_city", "graduate_rate",
+  #                                     "housing_appart", "agri_land"))) %>%
+  ggplot(aes(x = Var, y = Value)) +
+  geom_boxplot(alpha = 0.8, color = "blue") +
+  coord_flip() + 
+  facet_grid( Cluster ~ Partition, 
+              scales = "free")
+```
+
+
+
+
