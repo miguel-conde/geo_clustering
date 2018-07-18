@@ -35,7 +35,18 @@ load("data/final_dataset.Rds")
 
 # Secciones Censales
 
-## Los números
+## Los números (I)
+
+![alt text](img/n_1.png)
+
+## Los números (II)
+
+![alt text](img/n_2.png)
+
+## Los números (y III)
+
+![alt text](img/n_3.png)
+
 
 ## Ejemplo: CAM
 ```{r}
