@@ -41,11 +41,11 @@ load("data/final_dataset.Rds")
 
 ## Los números (II)
 
-![alt text](img/n_2.png)
+![](img/n_2.png)
 
 ## Los números (y III)
 
-![alt text](img/n_3.png)
+![](img/n_3.png)
 
 
 ## Ejemplo: CAM
