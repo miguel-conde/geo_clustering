@@ -8,6 +8,7 @@ output:
     reveal_plugins: ["zoom"]
     theme: sky
     highlight: pygments
+    footer: "Confidencial - Copyright (c) 2018 Conento Decision Science"
 ---
 
 ```{r setup, include = FALSE}
@@ -119,7 +120,9 @@ plot_ss_area("SO312")
 - Podemos agruparlas *simultáneamente*:
     - Por similitud cualitativa (por ejemplo, socio-económica)
     - Y proximidad o contigüidad
-- Haremos ejemplos con 6 clusters
+- Haremos ejemplos con:
+    - 6 clusters
+    - Tipo de zona, densidad de población, edad media, nivel socioeconómico
 
 Pero **¿ES DEL TODO AUTOMÁTICO?**
 
