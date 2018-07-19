@@ -37,7 +37,7 @@ load("data/final_dataset.Rds")
 
 ## Los números (I)
 
-![alt text](img/n_1.png)
+![](img/n_1.png)
 
 ## Los números (II)
 
@@ -160,7 +160,7 @@ se_data <- final_dataset %>%
   select(tipo_zona:ratio_pdv_lae) %>% 
   select(tipo_zona, densidad_pob_km2, edad_media, nivel_socioeconomico) %>% 
   mutate(tipo_zona = scales::rescale(tipo_zona),
-         densidad_pob_km2 = scales::rescale(densidad_pob_km2),
+         densidad_pob_km2 = scales::rescale(log(densidad_pob_km2)),
          edad_media = scales::rescale(edad_media),
          nivel_socioeconomico = scales::rescale(nivel_socioeconomico))
 
@@ -209,7 +209,7 @@ legend("left", legend = paste("cluster", 1:K), fill = 1:K, bty = "n",
 ## Socio-económico y Distancias
 
 ```{r}
-tree <- hclustgeo(D0_se, D1_dist, alpha=0.5)
+tree <- hclustgeo(D0_se, D1_dist, alpha=0.6)
 P_K_se_dist <- cutree(tree, K)
 sp::plot(areas_LL, border = "grey", col = P_K_se_dist,
          main = "Socio - Economical + Distance Clustering")

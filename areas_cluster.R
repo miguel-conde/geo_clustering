@@ -57,7 +57,7 @@ se_data <- final_dataset %>%
   #        prop_poblacion_activa, nivel_socioeconomico)
   select(tipo_zona, densidad_pob_km2, edad_media, nivel_socioeconomico) %>% 
   mutate(tipo_zona = scales::rescale(tipo_zona),
-         densidad_pob_km2 = scales::rescale(densidad_pob_km2),
+         densidad_pob_km2 = scales::rescale(log(densidad_pob_km2)),
          edad_media = scales::rescale(edad_media),
          nivel_socioeconomico = scales::rescale(nivel_socioeconomico))
 
@@ -114,7 +114,7 @@ cr$Q
 # normalized proportion of explained pseudo-inertias
 cr$Qnorm 
 
-tree <- hclustgeo(D0_se, D1_dist, alpha=0.5)
+tree <- hclustgeo(D0_se, D1_dist, alpha=0.6)
 P_K_se_dist <- cutree(tree, K)
 sp::plot(areas_LL, border = "grey", col = P_K_se_dist,
          main = "Socio - Economical + Distance Clustering")
